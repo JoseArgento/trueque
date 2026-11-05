@@ -1,0 +1,183 @@
+local _, ns = ...
+
+-- English is the fallback; Spanish for esES and esMX (or when /trueque idioma es says so).
+-- No emoji anywhere: the game's fonts cannot draw them.
+local L = {
+	TITLE = "Trueque",
+	BINDING_TOGGLE = "Open / close",
+	COMPARTMENT = "Click to open the guild board: what people want, have and can craft.",
+	MINIMAP_TIP = "Left click: the board. Right click: my posts.",
+	TAB_BOARD = "Board",
+	TAB_MINE = "My posts",
+	TIP_BOARD = "What your guild wants, has and can craft.",
+	TIP_MINE = "Post something, or close what is done.",
+	KIND_WANT = "Want",
+	KIND_HAVE = "Have",
+	KIND_CRAFT = "Can craft",
+	KIND_ALL = "All",
+	TAG_WANT = "want",
+	TAG_HAVE = "have",
+	TAG_CRAFT = "craft",
+	TAG_MATCH = "match",
+	SEARCH = "Search",
+	BOARD_HEAD = "The guild's board",
+	BOARD_EMPTY = "Nothing posted yet. The board fills as guildmates with Trueque post what they want, have or can craft. Yours go in \"My posts\".",
+	BOARD_NO_GUILD = "You are not in a guild. Trueque is a guild board: join one and it fills up.",
+	BOARD_COUNT = "%d posts",
+	BOARD_COUNT_ONE = "1 post",
+	PICK = "Click a post on the left page to see it.",
+	BY = "by %s",
+	POSTED_AGO = "posted %s ago",
+	EXPIRES = "expires in %s",
+	QTY = "x%d",
+	NOTE = "Note",
+	INTERESTED = "I'm interested",
+	I_HAVE_IT = "I have it",
+	DONE = "Done",
+	WHISPER_HAVE = "Trueque: I have what you're looking for: %s",
+	WHISPER_WANT = "Trueque: I'm interested in your %s",
+	WHISPER_CRAFT = "Trueque: could you craft %s for me?",
+	WHISPERED = "Whispered %s.",
+	MATCH_HAVE = "%s has it: %s.",
+	MATCH_WANT = "%s is looking for it: %s.",
+	MATCH_CRAFT = "%s can craft it: %s.",
+	MATCH_LINE = "Match: %s",
+	MINE_HEAD = "A new post",
+	MINE_LIST = "My posts",
+	MINE_EMPTY = "No posts yet. Pick what it is, shift-click an item or a recipe into the field, and publish.",
+	LINK_PLACEHOLDER = "Shift-click an item or recipe here",
+	QTY_PLACEHOLDER = "How many",
+	NOTE_PLACEHOLDER = "A short note (where, when, what you'd trade)",
+	PUBLISH = "Publish",
+	PUBLISHED = "Posted: %s.",
+	CLOSED = "Closed: %s.",
+	NEED_LINK = "Shift-click an item or recipe into the field first.",
+	TOO_MANY = "You already have %d posts; close one first.",
+	FROM_TALLER = "Post what I'm missing (Taller)",
+	FROM_TALLER_DONE = "Posted %d materials from Taller's shopping list.",
+	FROM_TALLER_NONE = "Taller's shopping list has nothing missing.",
+	HOW = "How it works",
+	HOW_TIP = "Posts go to guildmates with Trueque by addon message, and expire after %d days. \"I'm interested\" and \"I have it\" whisper the author with a ready-made line, only when you click. Nothing is sent otherwise.",
+	TRIAL = "Trial accounts cannot send addon messages: you see the guild's board, but your posts stay with you.",
+	DAYS_SET = "Posts expire after %d days.",
+	DAYS_USAGE = "/trueque days N (1 to 30).",
+	HELP = "/trueque opens the board. /trueque mine opens my posts, /trueque days N sets how long a post lasts, /trueque minimap on|off, /trueque idioma es|en|auto picks the language, /trueque errores shows the addon's own errors.",
+	LANG_SET = "Language: %s.",
+	LANG_NAMES = { auto = "the game's", es = "castellano", en = "English" },
+	LANG_USAGE = "/trueque idioma es, en or auto.",
+	ERR_TITLE = "Errors",
+	ERR_NOTICE = "had an error. /trueque errores shows it to copy.",
+	ERR_EMPTY = "No errors kept.",
+	ERR_CLEAR = "Clear",
+	ERR_COPY = "Select the text and copy it with Ctrl+C, then paste it in a GitHub issue.",
+	UNKNOWN_ITEM = "item %d",
+	DAY = "%d d",
+	HOUR = "%d h",
+	MINUTE = "%d min",
+}
+
+local es = {
+	TITLE = "Trueque",
+	BINDING_TOGGLE = "Abrir / cerrar",
+	COMPARTMENT = "Clic para abrir el tablón de la guild: qué buscan, qué tienen y qué pueden hacer.",
+	MINIMAP_TIP = "Clic izquierdo: el tablón. Clic derecho: mis avisos.",
+	TAB_BOARD = "Tablón",
+	TAB_MINE = "Mis avisos",
+	TIP_BOARD = "Qué busca, qué tiene y qué puede hacer tu guild.",
+	TIP_MINE = "Publicá algo, o cerrá lo que ya está.",
+	KIND_WANT = "Quiero",
+	KIND_HAVE = "Tengo",
+	KIND_CRAFT = "Puedo hacer",
+	KIND_ALL = "Todos",
+	TAG_WANT = "quiero",
+	TAG_HAVE = "tengo",
+	TAG_CRAFT = "hago",
+	TAG_MATCH = "hay uno",
+	SEARCH = "Buscar",
+	BOARD_HEAD = "El tablón de la guild",
+	BOARD_EMPTY = "Todavía no hay avisos. El tablón se llena cuando los de la guild con Trueque publican qué buscan, qué tienen o qué pueden hacer. Los tuyos van en \"Mis avisos\".",
+	BOARD_NO_GUILD = "No estás en una guild. Trueque es un tablón de guild: cuando entres a una, se llena.",
+	BOARD_COUNT = "%d avisos",
+	BOARD_COUNT_ONE = "1 aviso",
+	PICK = "Elegí un aviso en la página izquierda para verlo.",
+	BY = "de %s",
+	POSTED_AGO = "publicado hace %s",
+	EXPIRES = "vence en %s",
+	QTY = "x%d",
+	NOTE = "Nota",
+	INTERESTED = "Me interesa",
+	I_HAVE_IT = "Lo tengo",
+	DONE = "Ya está",
+	WHISPER_HAVE = "Trueque: tengo lo que buscás: %s",
+	WHISPER_WANT = "Trueque: me interesa tu %s",
+	WHISPER_CRAFT = "Trueque: ¿me harías %s?",
+	WHISPERED = "Le susurraste a %s.",
+	MATCH_HAVE = "%s lo tiene: %s.",
+	MATCH_WANT = "%s lo busca: %s.",
+	MATCH_CRAFT = "%s lo puede hacer: %s.",
+	MATCH_LINE = "Cruce: %s",
+	MINE_HEAD = "Un aviso nuevo",
+	MINE_LIST = "Mis avisos",
+	MINE_EMPTY = "Todavía no publicaste nada. Elegí qué es, pegá un ítem o una receta con Shift-clic y publicá.",
+	LINK_PLACEHOLDER = "Shift-clic en un ítem o receta",
+	QTY_PLACEHOLDER = "Cuántos",
+	NOTE_PLACEHOLDER = "Una nota corta (dónde, cuándo, qué cambiás)",
+	PUBLISH = "Publicar",
+	PUBLISHED = "Publicado: %s.",
+	CLOSED = "Cerrado: %s.",
+	NEED_LINK = "Primero pegá un ítem o una receta con Shift-clic.",
+	TOO_MANY = "Ya tenés %d avisos; cerrá alguno primero.",
+	FROM_TALLER = "Publicar lo que me falta (Taller)",
+	FROM_TALLER_DONE = "Publicados %d materiales de la lista de compras de Taller.",
+	FROM_TALLER_NONE = "A la lista de compras de Taller no le falta nada.",
+	HOW = "¿Cómo funciona?",
+	HOW_TIP = "Los avisos llegan a los de la guild con Trueque por mensaje de addon y vencen a los %d días. \"Me interesa\" y \"Lo tengo\" le susurran al autor una línea ya escrita, solo cuando hacés clic. Fuera de eso no se manda nada.",
+	TRIAL = "Las cuentas de prueba no pueden mandar mensajes de addon: ves el tablón de la guild, pero tus avisos se quedan con vos.",
+	DAYS_SET = "Los avisos vencen a los %d días.",
+	DAYS_USAGE = "/trueque dias N (de 1 a 30).",
+	HELP = "/trueque abre el tablón. /trueque mios abre mis avisos, /trueque dias N fija cuánto dura un aviso, /trueque minimapa on|off, /trueque idioma es|en|auto elige el idioma, /trueque errores muestra los errores propios del addon.",
+	LANG_SET = "Idioma: %s.",
+	LANG_NAMES = { auto = "el del juego", es = "castellano", en = "inglés" },
+	LANG_USAGE = "/trueque idioma es, en o auto.",
+	ERR_TITLE = "Errores",
+	ERR_NOTICE = "tuvo un error. /trueque errores lo muestra para copiarlo.",
+	ERR_EMPTY = "Sin errores guardados.",
+	ERR_CLEAR = "Borrar",
+	ERR_COPY = "Seleccioná el texto y copialo con Ctrl+C, después pegalo en un issue de GitHub.",
+	UNKNOWN_ITEM = "ítem %d",
+	DAY = "%d d",
+	HOUR = "%d h",
+	MINUTE = "%d min",
+}
+
+-- ns.L is a proxy: the files keep `local L = ns.L` and read through it, so the language can change after
+-- they loaded (the setting lives in TruequeDB, which is only there at ADDON_LOADED; /trueque idioma too).
+local active = L
+ns.L = setmetatable({}, {
+	__index = function(_, k)
+		return active[k]
+	end,
+})
+
+-- "auto" follows the game's client; "es" or "en" force one.
+function ns.ApplyLanguage(code)
+	local locale = GetLocale()
+	local spanish = code == "es" or (code ~= "en" and (locale == "esES" or locale == "esMX"))
+	if spanish then
+		local merged = {}
+		for k, v in pairs(L) do
+			merged[k] = v
+		end
+		for k, v in pairs(es) do
+			merged[k] = v
+		end
+		active = merged
+	else
+		active = L
+	end
+	ns.language = spanish and "es" or "en"
+	if ns.Fire then
+		ns.Fire("language")
+	end
+end
+ns.ApplyLanguage("auto")

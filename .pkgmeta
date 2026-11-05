@@ -1,0 +1,13 @@
+package-as: Trueque
+
+move-folders:
+  Trueque/Trueque: Trueque
+
+ignore:
+  # README.md has the Patreon link, and an addon folder must not ask for donations: it stays on GitHub
+  - README.md
+  - docs
+  - tests
+  - tools
+  - pyproject.toml
+  - README.en.md
