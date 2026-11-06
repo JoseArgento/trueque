@@ -694,3 +694,24 @@ def test_shift_click_with_a_field_focused_is_taken_so_the_stack_is_not_split(me)
     assert f.link._text == WOOL
     me.run("ns.UI.frame.link:ClearFocus()")
     assert me.run(f"return ChatFrameUtil.InsertLink([[{WOOL}]])") is False
+
+
+def test_merging_the_minimap_buttons_hides_ours_and_the_hub_lists_it(me):
+    me.open()
+    entries = me.run("return Pergamino.MinimapHub.Entries()")
+    assert [e.label for e in entries.values()] == ["Trueque"]
+    me.slash("minimapa juntar on")
+    assert me.run("return ns.db.settings.minimapMerged") is True and me.run("return Pergamino.MinimapHub.IsMerged()") is True
+    assert me.run("return ns.UI.minimap._shown") is False
+    assert me.run("return PergaminoMinimapHub._shown") is True
+    me.slash("minimap merge off")
+    assert me.run("return ns.UI.minimap._shown") is True
+
+
+def test_an_error_in_the_minimap_click_or_the_compartment_is_kept(me):
+    me.open()
+    me.run("ns.UI.Toggle = function() error('se rompio el tablon') end")
+    me.run("ns.UI.minimap:GetScript('OnClick')(ns.UI.minimap, 'LeftButton')")
+    me.run("Trueque_OnAddonCompartmentClick()")
+    errs = me.run("return ns.guard.Errors()")
+    assert sorted(e.label for e in errs.values()) == ["compartment", "minimap"]

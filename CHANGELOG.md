@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.1 (sin publicar)
+
+- **Botón de minimapa como los del juego** (Pergamino 7): aro dorado biselado, disco oscuro, sombra, ícono crema; `/trueque minimapa juntar on|off` junta todos los addons de la familia en un solo botón con menú. Los errores del botón del minimapa y del compartimento también quedan guardados (`/trueque errores`).
+
 ## 0.1.0 (2026-11-05)
 
 Primera versión, para WoW Forever 1.60.1 (interfaz 16001).

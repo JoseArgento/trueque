@@ -648,7 +648,9 @@ function UI.Errors()
 	return UI.errorsCard
 end
 
--- The minimap button (Pergamino's), kept in the settings: shown or not, and where around the minimap.
+-- The minimap button (Pergamino's), kept in the settings: shown or not, and where around the minimap. It is
+-- registered in the family's hub (settings.minimapMerged = one button for every addon that shares the lib),
+-- and its clicks go through the guard: an error is kept, not thrown.
 function UI.Minimap()
 	local s = ns.db.settings
 	if not UI.minimap then
@@ -656,12 +658,11 @@ function UI.Minimap()
 			icon = "Interface\\AddOns\\" .. ADDON .. "\\Media\\icon",
 			angle = s.minimapAngle,
 			shown = s.minimap,
-			onClick = function(button)
-				if button == "RightButton" then
-					UI.Toggle("mine")
-				else
-					UI.Toggle()
-				end
+			onClick = function()
+				UI.Toggle()
+			end,
+			onRightClick = function()
+				UI.Toggle("mine")
 			end,
 			onMove = function(angle)
 				s.minimapAngle = angle
@@ -670,10 +671,22 @@ function UI.Minimap()
 				tip:SetText(L.TITLE)
 				tip:AddLine(L.MINIMAP_TIP, 1, 1, 1)
 			end,
+			guard = ns.guard,
+			hub = { addon = L.TITLE, label = L.TITLE, order = 7 },
 		})
+		if s.minimapMerged ~= nil then
+			P.MinimapHub.SetMerged(s.minimapMerged)
+		end
 	end
 	UI.minimap:SetShown(s.minimap)
 	return UI.minimap
+end
+
+-- /trueque minimapa juntar on|off: one button for the whole family (the lib keeps it for every addon)
+function UI.SetMinimapMerged(merged)
+	ns.db.settings.minimapMerged = merged and true or false
+	P.MinimapHub.SetMerged(merged)
+	ns.Print(merged and L.MINIMAP_MERGED_ON or L.MINIMAP_MERGED_OFF)
 end
 
 ns.On("board", UI.Refresh)

@@ -44,6 +44,13 @@ onSlash = function(msg)
 		else
 			ns.Print(L.DAYS_USAGE)
 		end
+	elseif msg:match("^minimapa%s+juntar") or msg:match("^minimap%s+merge") then
+		local on = msg:match("%s+(%a+)$")
+		if on == "on" or on == "off" then
+			ns.UI.SetMinimapMerged(on == "on")
+		else
+			ns.UI.SetMinimapMerged(not ns.db.settings.minimapMerged)
+		end
 	elseif msg:match("^minimapa") or msg:match("^minimap") then
 		local on = msg:match("%s+(%a+)$")
 		if on == "on" or on == "si" or on == "sí" then
@@ -73,8 +80,13 @@ onSlash = function(msg)
 end
 SlashCmdList.TRUEQUE = onSlash
 
+-- the addon compartment is not a frame, so its click is wrapped by hand (an error is kept, not thrown)
 function Trueque_OnAddonCompartmentClick()
-	ns.UI.Toggle()
+	if ns.guard then
+		ns.guard.Wrap(ns.UI.Toggle, "compartment")()
+	else
+		ns.UI.Toggle()
+	end
 end
 function Trueque_OnAddonCompartmentEnter(_, button)
 	GameTooltip:SetOwner(button, "ANCHOR_LEFT")
