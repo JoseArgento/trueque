@@ -5,6 +5,7 @@
 ## Notes-esMX: Un tablón de guild: qué buscás, qué tenés y qué podés hacer. Todos los que tienen el addon ven el mismo tablón; un clic le susurra al autor.
 ## Author: José Argento
 ## Version: @project-version@
+## X-Curse-Project-ID: 1787223
 ## SavedVariables: TruequeDB
 ## IconTexture: Interface\AddOns\Trueque\Media\icon
 ## AddonCompartmentFunc: Trueque_OnAddonCompartmentClick
