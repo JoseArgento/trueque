@@ -3,9 +3,10 @@ local L = ns.L
 local B = ns.Board
 local S = ns.Sync
 
--- The book (Pergamino.Book, two pages). Bookmark "Board": the guild's posts on the left (filter chips and a
--- search box over the list), the chosen post on the right with its buttons. Bookmark "My posts": the form
--- on the left (kind chips, link field, quantity, note, Publish), my posts on the right with "Done".
+-- The book (Pergamino.Book, two pages). Bookmark "Board": the guild's posts on the left (filter chips, a
+-- search row, the list, newest first), the chosen post on the right with its buttons. Bookmark "My posts":
+-- the form on the left (kind chips, link field, quantity, note, Publish; a click on one of mine loads it
+-- here to edit), my posts on the right ("Done" from a popup, never from a bare click).
 
 local UI = {}
 ns.UI = UI
@@ -16,6 +17,7 @@ UI.filter = "all"
 UI.query = ""
 UI.kind = "want"
 UI.selected = nil
+UI.editing = nil -- the id of one of mine loaded in the form
 
 -- Tag colours: the kinds borrow the lib's palette (want = link blue, have = green, craft = gold, match = crimson).
 local KIND_COLOR = { want = "note", have = "zone", craft = "level", match = "boss" }
@@ -27,6 +29,9 @@ function UI.RowText(post)
 		head = head .. " " .. L.QTY:format(post.qty)
 	end
 	local sub = L.BY:format(ns.Short(post.by)) .. " · " .. L.POSTED_AGO:format(ns.Span(ns.Now() - post.at))
+	if post.edited then
+		sub = sub .. " · " .. L.EDITED
+	end
 	if post.note and post.note ~= "" then
 		sub = post.note .. " · " .. sub
 	end
@@ -37,30 +42,63 @@ end
 function UI.BoardLines()
 	local rows = B.All(UI.filter, UI.query)
 	local out = { rows = rows }
-	if not ns.GuildKey() then
-		out.empty = L.BOARD_NO_GUILD
-	elseif #rows == 0 then
-		out.empty = L.BOARD_EMPTY
+	if #rows == 0 then
+		out.empty = ns.GuildKey() and L.BOARD_EMPTY or L.BOARD_NO_GUILD
+	elseif not ns.GuildKey() then
+		out.note = L.BOARD_NO_GUILD_MINE
 	end
 	out.count = #rows == 1 and L.BOARD_COUNT_ONE or L.BOARD_COUNT:format(#rows)
 	return out
 end
 
--- The right page for a chosen post.
+-- The right page for a chosen post: the link, who and when, then Quantity / Note / Expires as rows.
 function UI.Detail(post)
 	if not post then
 		return nil
 	end
 	local d = { link = ns.PostLink(post), kind = L[ns.KIND_LABEL[post.kind]], mine = B.IsMine(post) }
-	d.sub = L.BY:format(ns.Short(post.by)) .. " · " .. L.POSTED_AGO:format(ns.Span(ns.Now() - post.at)) .. " · "
-		.. L.EXPIRES:format(ns.Span(post.exp - ns.Now()))
-	if post.qty then
-		d.link = d.link .. " " .. L.QTY:format(post.qty)
+	d.sub = L.BY:format(ns.Short(post.by)) .. " · " .. L.POSTED_AGO:format(ns.Span(ns.Now() - post.at))
+	if post.edited then
+		d.sub = d.sub .. " · " .. L.EDITED
 	end
+	d.qty = post.qty and L.QTY:format(post.qty) or L.QTY_NONE
 	d.note = post.note ~= "" and post.note or nil
-	d.button = d.mine and L.DONE or (post.kind == "want" and L.I_HAVE_IT or L.INTERESTED)
+	d.expires = ns.Span(post.exp - ns.Now())
+	if d.mine then
+		d.button = L.DONE
+		d.edit = L.EDIT
+	else
+		d.button = post.kind == "want" and L.I_HAVE_IT or L.INTERESTED
+	end
 	d.matches = B.Matches(post)
 	return d
+end
+
+-- Hover on a row or a title with a link shows the game's tooltip for it (items, recipes); nothing for plain
+-- text. Shift-click puts the link in the chat box, like a link in the chat does.
+function UI.ShowLinkTip(owner, post)
+	if not post or not post.ref then
+		return false
+	end
+	GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
+	local ok = pcall(GameTooltip.SetHyperlink, GameTooltip, post.ref)
+	if ok then
+		GameTooltip:Show()
+	else
+		GameTooltip:Hide()
+	end
+	return ok
+end
+
+function UI.ChatLink(post)
+	if not post or not post.ref or not IsShiftKeyDown or not IsShiftKeyDown() then
+		return false
+	end
+	-- ChatFrameUtil.InsertLink is Forever's (the deprecated ChatEdit_InsertLink is not needed)
+	if ChatFrameUtil and ChatFrameUtil.InsertLink then
+		return ChatFrameUtil.InsertLink(ns.PostLink(post)) and true or false
+	end
+	return false
 end
 
 local function initRow(row, post)
@@ -77,6 +115,14 @@ local function initRow(row, post)
 		row.sub:SetWordWrap(false)
 		row.match = P.Tag(row, L.TAG_MATCH, KIND_COLOR.match)
 		row.match:SetPoint("TOPRIGHT", -6, -6)
+		row:SetScript("OnEnter", function(self)
+			if not UI.ShowLinkTip(self, self.item) and self.tip then
+				GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+				GameTooltip:SetText(self.tip)
+				GameTooltip:Show()
+			end
+		end)
+		row:SetScript("OnLeave", GameTooltip_Hide)
 	end
 	local head, sub, tag, match = UI.RowText(post)
 	row.tag:Set(tag, KIND_COLOR[post.kind])
@@ -121,28 +167,39 @@ local function buildBoard(f)
 		f.filters[kind] = chip
 		prev = chip
 	end
-	f.search = P.Edit(left, 110, {
+	-- the search box gets its own row under the chips: the page is too narrow for both on one line
+	f.search = P.Edit(left, 200, {
 		placeholder = L.SEARCH,
 		onChange = function(_, text)
 			UI.query = text
 			UI.Refresh()
 		end,
 	})
-	f.search:SetPoint("TOPRIGHT", f.boardHead, "BOTTOMRIGHT", 0, -8)
+	f.search:SetPoint("TOPLEFT", f.filters.all, "BOTTOMLEFT", 0, -10)
+	f.search:SetPoint("RIGHT", left, "RIGHT", 0, 0)
 
 	local rule = P.Rule(left)
-	rule:SetPoint("TOPLEFT", f.filters.all, "BOTTOMLEFT", 0, -8)
+	rule:SetPoint("TOPLEFT", f.search, "BOTTOMLEFT", 0, -8)
 	rule:SetPoint("RIGHT", left, "RIGHT", 0, 0)
 
+	-- only while the list is empty (it would sit on top of the rows otherwise)
 	f.empty = P.Label(left, "", "muted", "CENTER")
 	f.empty:SetPoint("TOPLEFT", rule, "BOTTOMLEFT", 10, -30)
 	f.empty:SetPoint("RIGHT", left, "RIGHT", -10, 0)
 	f.empty:SetWordWrap(true)
+	-- a short line under the list when there is no guild but there are posts of mine
+	f.note = P.Label(left, "", "muted", "CENTER")
+	f.note:SetPoint("BOTTOMLEFT", left, "BOTTOMLEFT", 0, 0)
+	f.note:SetPoint("RIGHT", left, "RIGHT", -14, 0)
+	f.note:SetWordWrap(true)
 
 	local holder = P.Panel(left)
 	holder:SetPoint("TOPLEFT", rule, "BOTTOMLEFT", 0, -8)
-	holder:SetPoint("BOTTOMRIGHT", left, "BOTTOMRIGHT", -14, 0)
+	holder:SetPoint("BOTTOMRIGHT", left, "BOTTOMRIGHT", -14, 18)
 	f.list = P.List(holder, ROW_H, initRow, function(post)
+		if UI.ChatLink(post) then
+			return
+		end
 		UI.selected = post
 		UI.Refresh()
 	end)
@@ -165,31 +222,55 @@ local function buildBoard(f)
 	f.dSub:SetPoint("TOPLEFT", f.dLink, "BOTTOMLEFT", 0, -4)
 	f.dSub:SetPoint("RIGHT")
 	f.dSub:SetWordWrap(true)
-	f.dNoteHead = P.Label(right, L.NOTE, "subheading")
-	f.dNoteHead:SetPoint("TOPLEFT", f.dSub, "BOTTOMLEFT", 0, -14)
-	f.dNote = P.Label(right, "", "body")
-	f.dNote:SetPoint("TOPLEFT", f.dNoteHead, "BOTTOMLEFT", 0, -4)
-	f.dNote:SetPoint("RIGHT")
-	f.dNote:SetWordWrap(true)
+	-- hover on the title shows the item or recipe; shift-click puts the link in the chat
+	local hit = CreateFrame("Button", nil, right)
+	hit:SetAllPoints(f.dLink)
+	hit:RegisterForClicks("LeftButtonUp")
+	hit:SetScript("OnEnter", function(self)
+		UI.ShowLinkTip(self, UI.selected)
+	end)
+	hit:SetScript("OnLeave", GameTooltip_Hide)
+	hit:SetScript("OnClick", function()
+		UI.ChatLink(UI.selected)
+	end)
+	f.dLinkHit = hit
+	-- Quantity / Note / Expires, each a labelled row
+	local function detailRow(anchor, label)
+		local head = P.Label(right, label, "subheading")
+		head:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -12)
+		local value = P.Label(right, "", "body")
+		value:SetPoint("TOPLEFT", head, "BOTTOMLEFT", 0, -3)
+		value:SetPoint("RIGHT")
+		value:SetWordWrap(true)
+		return head, value
+	end
+	f.dQtyHead, f.dQty = detailRow(f.dSub, L.QTY_HEAD)
+	f.dNoteHead, f.dNote = detailRow(f.dQty, L.NOTE)
+	f.dExpHead, f.dExp = detailRow(f.dNote, L.EXPIRES_HEAD)
 	f.dMatches = P.Label(right, "", "body")
-	f.dMatches:SetPoint("TOPLEFT", f.dNote, "BOTTOMLEFT", 0, -14)
+	f.dMatches:SetPoint("TOPLEFT", f.dExp, "BOTTOMLEFT", 0, -14)
 	f.dMatches:SetPoint("RIGHT")
 	f.dMatches:SetWordWrap(true)
+	-- mine: "Edit" and "Done" (Done asks first); theirs: the whisper button
 	f.dButton = P.Button(right, "", 150, function()
 		local post = UI.selected
 		if not post then
 			return
 		end
 		if B.IsMine(post) then
-			B.Close(post.id)
-			ns.Print(L.CLOSED:format(ns.PostLink(post)))
-			UI.selected = nil
+			UI.AskClose(post)
 		else
 			B.Whisper(post)
+			UI.Refresh()
 		end
-		UI.Refresh()
 	end)
 	f.dButton:SetPoint("BOTTOMRIGHT", right, "BOTTOMRIGHT", 0, 0)
+	f.dEdit = P.Button(right, L.EDIT, 120, function()
+		if UI.selected and B.IsMine(UI.selected) then
+			UI.Edit(UI.selected.id)
+		end
+	end)
+	f.dEdit:SetPoint("RIGHT", f.dButton, "LEFT", -8, 0)
 	f.dHow = P.Label(right, L.HOW, "link")
 	f.dHow:SetPoint("BOTTOMLEFT", right, "BOTTOMLEFT", 0, 4)
 	local how = CreateFrame("Frame", nil, right)
@@ -233,6 +314,9 @@ local function buildMine(f)
 	if f.qty.SetNumeric then
 		f.qty:SetNumeric(true)
 	end
+	-- empty quantity means "no limit"
+	f.qtyHint = P.Label(left, L.QTY_HINT, "muted")
+	f.qtyHint:SetPoint("LEFT", f.qty, "RIGHT", 10, 0)
 	f.note = P.Edit(left, 360, { placeholder = L.NOTE_PLACEHOLDER, maxLetters = ns.MAX_NOTE })
 	f.note:SetPoint("TOPLEFT", f.qty, "BOTTOMLEFT", 0, -12)
 	f.note:SetPoint("RIGHT", left, "RIGHT", 0, 0)
@@ -240,6 +324,17 @@ local function buildMine(f)
 		UI.PublishFromForm()
 	end)
 	f.publish:SetPoint("TOPRIGHT", f.note, "BOTTOMRIGHT", 0, -14)
+	f.cancel = P.Button(left, L.CANCEL, 110, function()
+		UI.CancelEdit()
+	end)
+	f.cancel:SetPoint("RIGHT", f.publish, "LEFT", -8, 0)
+	f.cancel:Hide()
+	f.editing = P.Label(left, L.EDITING, "italic")
+	f.editing:SetPoint("TOPLEFT", f.publish, "BOTTOMLEFT", 0, -10)
+	f.editing:SetPoint("LEFT", left, "LEFT", 0, 0)
+	f.editing:SetPoint("RIGHT", left, "RIGHT", 0, 0)
+	f.editing:SetWordWrap(true)
+	f.editing:Hide()
 	f.taller = P.Button(left, L.FROM_TALLER, 260, function()
 		ns.Partners.PostMissing()
 		UI.Refresh()
@@ -265,11 +360,15 @@ local function buildMine(f)
 	local holder = P.Panel(right)
 	holder:SetPoint("TOPLEFT", f.mineList, "BOTTOMLEFT", 0, -8)
 	holder:SetPoint("BOTTOMRIGHT", right, "BOTTOMRIGHT", -14, 0)
-	f.mine = P.List(holder, ROW_H, initRow, function(post, button)
-		if button == "RightButton" or button == "LeftButton" then
-			B.Close(post.id)
-			ns.Print(L.CLOSED:format(ns.PostLink(post)))
-			UI.Refresh()
+	-- a click loads the post in the form to change it; the right button asks before closing it
+	f.mine = P.List(holder, ROW_H, function(row, post)
+		initRow(row, post)
+		row.tip = L.MINE_TIP
+	end, function(post, button)
+		if button == "RightButton" then
+			UI.AskClose(post)
+		elseif not UI.ChatLink(post) then
+			UI.Edit(post.id)
 		end
 	end)
 	f.mine.box:SetPoint("TOPLEFT", 2, -2)
@@ -306,20 +405,85 @@ local function build()
 	return f
 end
 
--- The form's Publish: what the fields hold becomes a post, or the reason goes to chat.
+-- The form's Publish: what the fields hold becomes a post (or, while editing, replaces one), or the reason
+-- goes to chat. The fields are cleared after, and the link field gets the focus back for the next one.
 function UI.PublishFromForm()
 	local f = UI.frame
-	local post, why = B.Publish(UI.kind, f.link:GetText() or "", f.qty:GetText(), f.note:GetText() or "")
+	local post, why
+	if UI.editing then
+		post, why = B.Update(UI.editing, UI.kind, f.link:GetText() or "", f.qty:GetText(), f.note:GetText() or "")
+	else
+		post, why = B.Publish(UI.kind, f.link:GetText() or "", f.qty:GetText(), f.note:GetText() or "")
+	end
 	if not post then
 		ns.Print(why)
 		return nil
 	end
+	ns.Print((UI.editing and L.UPDATED or L.PUBLISHED):format(ns.PostLink(post)))
+	UI.editing = nil
+	UI.ClearForm()
+	UI.Refresh()
+	return post
+end
+
+function UI.ClearForm()
+	local f = UI.frame
 	f.link:SetValue("")
 	f.qty:SetValue("")
 	f.note:SetValue("")
-	ns.Print(L.PUBLISHED:format(ns.PostLink(post)))
+	f.link:SetFocus()
+end
+
+-- Load one of mine into the form: the chips, the link, the quantity and the note; Publish becomes Save.
+function UI.Edit(id)
+	local post = B.Get(id)
+	if not post then
+		return false
+	end
+	local f = UI.frame
+	UI.editing = id
+	UI.kind = post.kind
+	f.link:SetValue(ns.PostLink(post))
+	f.qty:SetValue(post.qty and tostring(post.qty) or "")
+	f.note:SetValue(post.note or "")
+	f:SelectTab("mine")
+	f:Show()
 	UI.Refresh()
-	return post
+	return true
+end
+
+function UI.CancelEdit()
+	UI.editing = nil
+	UI.ClearForm()
+	UI.Refresh()
+end
+
+-- "Done" always asks first: a bare click used to close the post, which is easy to do by accident.
+StaticPopupDialogs[ADDON .. "_CLOSE"] = {
+	text = "%s",
+	button1 = YES,
+	button2 = NO,
+	OnAccept = function(_, id)
+		local post = B.Close(id)
+		if post then
+			ns.Print(L.CLOSED:format(ns.PostLink(post)))
+			if UI.editing == id then
+				UI.editing = nil
+				UI.ClearForm()
+			end
+			if UI.selected and UI.selected.id == id then
+				UI.selected = nil
+			end
+			UI.Refresh()
+		end
+	end,
+	timeout = 0,
+	whileDead = true,
+	hideOnEscape = true,
+	preferredIndex = 3,
+}
+function UI.AskClose(post)
+	StaticPopup_Show(ADDON .. "_CLOSE", L.CLOSE_ASK:format(ns.PostLink(post)), nil, post.id)
 end
 
 function UI.ApplyTexts()
@@ -336,8 +500,14 @@ function UI.ApplyTexts()
 	f.mineList:SetText(L.MINE_LIST)
 	f.pick:SetText(L.PICK)
 	f.dNoteHead:SetText(L.NOTE)
+	f.dQtyHead:SetText(L.QTY_HEAD)
+	f.dExpHead:SetText(L.EXPIRES_HEAD)
+	f.dEdit:SetText(L.EDIT)
 	f.dHow:SetText(L.HOW)
-	f.publish:SetText(L.PUBLISH)
+	f.cancel:SetText(L.CANCEL)
+	f.editing:SetText(L.EDITING)
+	f.qtyHint:SetText(L.QTY_HINT)
+	f.publish:SetText(UI.editing and L.SAVE or L.PUBLISH)
 	f.taller:SetText(L.FROM_TALLER)
 	f.mineEmpty:SetText(L.MINE_EMPTY)
 	f.link:SetPlaceholder(L.LINK_PLACEHOLDER)
@@ -368,6 +538,8 @@ function UI.Refresh()
 		end
 		f.empty:SetText(lines.empty or "")
 		f.empty:SetShown(lines.empty ~= nil)
+		f.note:SetText(lines.note or "")
+		f.note:SetShown(lines.note ~= nil)
 		f.list:SetData(lines.rows, true)
 		-- the chosen post may be gone (closed, expired)
 		if UI.selected then
@@ -381,15 +553,22 @@ function UI.Refresh()
 		end
 		local d = UI.Detail(UI.selected)
 		f.pick:SetShown(d == nil)
-		for _, w in ipairs({ f.dKind, f.dLink, f.dSub, f.dNoteHead, f.dNote, f.dMatches, f.dButton }) do
+		for _, w in ipairs({ f.dKind, f.dLink, f.dSub, f.dQtyHead, f.dQty, f.dNoteHead, f.dNote, f.dExpHead, f.dExp, f.dMatches, f.dButton }) do
 			w:SetShown(d ~= nil)
 		end
+		f.dEdit:SetShown(d ~= nil and d.mine)
 		if d then
 			f.dKind:Set(d.kind, KIND_COLOR[UI.selected.kind])
 			f.dLink:SetText(d.link)
 			f.dSub:SetText(d.sub)
+			f.dQty:SetText(d.qty)
 			f.dNoteHead:SetShown(d.note ~= nil)
 			f.dNote:SetText(d.note or "")
+			f.dNote:SetShown(d.note ~= nil)
+			-- without a note, Expires moves up under Quantity
+			f.dExpHead:ClearAllPoints()
+			f.dExpHead:SetPoint("TOPLEFT", d.note and f.dNote or f.dQty, "BOTTOMLEFT", 0, -12)
+			f.dExp:SetText(d.expires)
 			local lines2 = {}
 			for _, other in ipairs(d.matches) do
 				local fmt = other.kind == "have" and L.MATCH_HAVE or other.kind == "craft" and L.MATCH_CRAFT or L.MATCH_WANT
@@ -402,6 +581,7 @@ function UI.Refresh()
 		for kind, chip in pairs(f.kinds) do
 			chip:SetPressed(kind == UI.kind)
 		end
+		-- newest first, like the board
 		local mine = {}
 		for i = #B.Mine(), 1, -1 do
 			mine[#mine + 1] = B.Mine()[i]
@@ -409,6 +589,13 @@ function UI.Refresh()
 		f.mine:SetData(mine, true)
 		f.mineEmpty:SetShown(#mine == 0)
 		f.taller:SetShown(ns.Partners.HasTaller())
+		if UI.editing and not B.Get(UI.editing) then
+			UI.editing = nil
+		end
+		f.publish:SetText(UI.editing and L.SAVE or L.PUBLISH)
+		f.cancel:SetShown(UI.editing ~= nil)
+		f.editing:SetShown(UI.editing ~= nil)
+		f.mineEmpty:SetShown(#mine == 0 and not UI.editing)
 	end
 end
 

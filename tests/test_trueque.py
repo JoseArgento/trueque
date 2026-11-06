@@ -297,9 +297,14 @@ def test_trial_accounts_receive_but_do_not_send_and_are_told_once():
 def test_without_a_guild_nothing_is_sent_and_the_board_says_so():
     c = Client(setup="MOCK.guild = nil").login()
     assert c.sent() == []
+    assert c.run("return ns.UI.BoardLines().empty") == "You are not in a guild. Trueque is a guild board: join one and it fills up."
     c.publish("want", LINEN)
     assert c.sent() == []
-    assert c.run("return ns.UI.BoardLines().empty") == "You are not in a guild. Trueque is a guild board: join one and it fills up."
+    # with posts of mine the long text leaves the list alone: a short note under it instead
+    lines = c.run("return ns.UI.BoardLines()")
+    assert lines.empty is None and lines.note == "No guild: only your own posts show here."
+    f = c.open()
+    assert f.empty._shown is False and f.note._shown is True
 
 
 def test_opening_the_board_asks_again_at_most_once_a_minute(me):
@@ -356,14 +361,117 @@ def test_the_buttons_whisper_the_author_only_from_a_click(me, ana):
     assert f.dButton._text == "I'm interested"
 
 
-def test_my_own_post_gets_done_instead(me):
-    post = me.publish("have", LINEN)
+def test_my_own_post_gets_edit_and_done_and_done_asks_first(me):
+    post = me.publish("have", LINEN, 3, "bank")
     f = me.open()
     me.run("ns.UI.selected = ns.Board.Mine()[1]; ns.UI.Refresh()")
-    assert f.dButton._text == "Done"
+    assert f.dButton._text == "Done" and f.dEdit._shown is True
+    assert f.dQty._text == "x3" and f.dNote._text == "bank" and f.dExp._text == "7 d"
     me.run("ns.UI.frame.dButton:GetScript('OnClick')()")
+    # nothing closed yet: a popup asks
+    assert me.mine() != []
+    popups = me.m.popups
+    assert popups[1].which == "Trueque_CLOSE" and "Bolt of Linen Cloth" in popups[1].text and popups[1].data == post.id
+    me.run("StaticPopupDialogs['Trueque_CLOSE'].OnAccept(nil, MOCK.popups[1].data)")
     assert me.mine() == [] and me.whispers() == []
     assert me.sent()[-1][1] == f"X|{post.id}"
+    # someone else's post has no Edit
+    me.run("ns.UI.selected = nil; ns.UI.Refresh()")
+    assert f.dEdit._shown is False
+
+
+def test_a_post_without_quantity_means_no_limit(me):
+    post = me.publish("have", LINEN, None, "")
+    assert post.qty is None
+    head, _sub, _tag, _match = me.run("return ns.UI.RowText(ns.Board.Mine()[1])")
+    assert "x" not in head.split("]")[-1]
+    f = me.open()
+    me.run("ns.UI.selected = ns.Board.Mine()[1]; ns.UI.Refresh()")
+    assert f.dQty._text == "no limit"
+    assert f.dNoteHead._shown is False and f.dNote._shown is False
+    me.run("ns.UI.frame:SelectTab('mine')")
+    assert f.qtyHint._text == "Empty: no limit"
+    # the quantity box accepts "" too
+    me.run("ns.UI.frame.link:SetText([[" + WOOL + "]]); ns.UI.frame.qty:SetText('')")
+    assert me.run("return ns.UI.PublishFromForm().qty") is None
+
+
+def test_a_click_on_one_of_mine_loads_it_to_edit_and_save_keeps_id_and_date(me, ana):
+    post = me.publish("want", LINEN, 2, "old note")
+    me.take_sent()
+    f = me.open()
+    me.run("ns.UI.frame:SelectTab('mine')")
+    assert f.publish._text == "Publish" and f.cancel._shown is False
+    assert me.run(f"return ns.UI.Edit('{post.id}')") is True
+    assert me.run("return ns.UI.editing") == post.id and me.run("return ns.UI.kind") == "want"
+    assert "Bolt of Linen Cloth" in f.link._text and f.qty._text == "2" and f.note._text == "old note"
+    assert f.publish._text == "Save changes" and f.cancel._shown is True and f.editing._shown is True
+    me.run("ns.UI.kind = 'have'; ns.UI.frame.qty:SetText('5'); ns.UI.frame.note:SetText('new note')")
+    saved = me.run("return ns.UI.PublishFromForm()")
+    assert saved.id == post.id and saved.at == post.at and saved.kind == "have" and saved.qty == 5 and saved.note == "new note"
+    assert saved.edited is not None and len(me.mine()) == 1
+    assert me.run("return ns.UI.editing") is None and f.publish._text == "Publish" and f.cancel._shown is False
+    assert f.link._text == "" and me.chat()[-1].startswith("|cffffd100Trueque:|r Updated:")
+    # the guild hears it again under the same id, and replaces its copy
+    assert me.sent()[-1][1].startswith(f"N|{post.id}|have|item:2996|")
+    deliver(me, ana)
+    theirs = ana.board()[post.id]
+    assert theirs.kind == "have" and theirs.qty == 5 and theirs.note == "new note"
+    # the row says it was edited
+    _head, sub, _tag, _match = me.run("return ns.UI.RowText(ns.Board.Mine()[1])")
+    assert sub.endswith("· edited")
+
+
+def test_cancel_leaves_the_post_alone_and_clears_the_form(me):
+    post = me.publish("want", LINEN, 2, "note")
+    f = me.open()
+    me.run(f"ns.UI.Edit('{post.id}')")
+    me.run("ns.UI.frame.note:SetText('changed')")
+    me.run("ns.UI.CancelEdit()")
+    assert me.run("return ns.UI.editing") is None and f.link._text == "" and f.note._text == ""
+    assert me.mine()[0].note == "note"
+
+
+def test_closing_from_the_list_asks_and_clears_an_edit_in_progress(me):
+    post = me.publish("want", LINEN)
+    f = me.open()
+    me.run(f"ns.UI.Edit('{post.id}')")
+    me.run(f"ns.UI.AskClose(ns.Board.Get('{post.id}'))")
+    assert me.m.popups[1].which == "Trueque_CLOSE"
+    me.run("StaticPopupDialogs['Trueque_CLOSE'].OnAccept(nil, MOCK.popups[1].data)")
+    assert me.mine() == [] and me.run("return ns.UI.editing") is None and f.cancel._shown is False
+
+
+def test_hover_shows_the_game_tooltip_for_links_and_shift_click_pastes_them(me):
+    me.publish("want", LINEN)
+    me.publish("craft", "plain text recipe")
+    f = me.open()
+    linked, plain = me.run("return ns.Board.Mine()[1], ns.Board.Mine()[2]")
+    assert me.run("return ns.UI.ShowLinkTip(ns.UI.frame, ns.Board.Mine()[1])") is True
+    calls = [c[1] for c in me.run("return GameTooltip._calls").values()]
+    assert "SetHyperlink" in calls
+    assert me.run("return ns.UI.ShowLinkTip(ns.UI.frame, ns.Board.Mine()[2])") is False
+    # the title on the right page has a hit frame with the same hover
+    me.run("ns.UI.selected = ns.Board.Mine()[1]; ns.UI.Refresh()")
+    assert f.dLinkHit is not None
+    # shift-click: the link goes to the chat box; without shift, nothing
+    me.run("MOCK.inserted = {}; ChatFrameUtil.InsertLink = function(t) table.insert(MOCK.inserted, t) return true end")
+    assert me.run("return ns.UI.ChatLink(ns.Board.Mine()[1])") is False
+    me.run("IsShiftKeyDown = function() return true end")
+    assert me.run("return ns.UI.ChatLink(ns.Board.Mine()[1])") is True
+    assert "Hitem:2996" in me.m.inserted[1]
+    assert me.run("return ns.UI.ChatLink(ns.Board.Mine()[2])") is False
+
+
+def test_the_board_and_my_posts_show_the_newest_first(me, ana):
+    first = me.publish("want", LINEN)
+    me.run("MOCK.now = MOCK.now + 60")
+    second = me.publish("have", WOOL)
+    assert [p.id for p in me.all()] == [second.id, first.id]
+    ana.run("MOCK.now = MOCK.now + 120")  # each client has its own clock
+    theirs = ana.publish("craft", RECIPE)
+    deliver(ana, me)
+    assert [p.id for p in me.all()] == [theirs.id, second.id, first.id]
 
 
 # the book -----------------------------------------------------------------------------------------
@@ -373,8 +481,11 @@ def test_the_book_opens_with_two_bookmarks_and_empty_states(me):
     f = me.open()
     assert f.selected == "board" and f.tabs.board is not None and f.tabs.mine is not None
     assert f.pageR is not None  # two pages
-    assert f.empty._shown is True
+    assert f.empty._shown is True and f.note._shown is False
     assert f.empty._text.startswith("Nothing posted yet.")
+    # the search box sits in its own row under the chips, full width
+    pts = me.run("local p = ns.UI.frame.search._points; return p[1][2] == ns.UI.frame.filters.all, p[1][1]")
+    assert pts == (True, "TOPLEFT")
     me.run("ns.UI.frame:SelectTab('mine')")
     assert f.mineEmpty._shown is True
     assert me.run("return ns.UI.frame.tabs.mine.action") is None

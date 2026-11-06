@@ -20,8 +20,10 @@ It pairs with [Taller](https://github.com/JoseArgento/taller): what you're missi
 
 Open it with `/trueque`, with the **round minimap button** (right click: my posts; drag it around the minimap, `/trueque minimap off` hides it), with the key binding or from the addon compartment. The window is a **parchment book** (the [Pergamino](https://github.com/JoseArgento/pergamino) skin, the same as Bitácora and the other addons) with two bookmarks:
 
-- **Board.** On the left, the guild's posts, with filters (All / Want / Have / Can craft) and a search box. On the right, the chosen post: the item, who posted it, their note, when it expires, and a button: **"I have it"** when someone wants something, **"I'm interested"** when someone offers something or can craft it. The button whispers the author a ready-made line, nothing more. On your own post the button is **"Done"** and closes it.
-- **My posts.** Pick what it is (Want, Have, Can craft), **shift-click** an item or recipe into the field (or type a name), how many, a short note, and **Publish**. On the right, your current posts; a click closes one.
+- **Board.** On the left, the guild's posts, newest first, with filters (All / Want / Have / Can craft) and a search box. On the right, the chosen post: the item, who posted it, the quantity, their note, when it expires, and a button: **"I have it"** when someone wants something, **"I'm interested"** when someone offers something or can craft it. The button whispers the author a ready-made line, nothing more. On your own post there are **"Edit"** and **"Done"**; closing asks first.
+- **My posts.** Pick what it is (Want, Have, Can craft), **shift-click** an item or recipe into the field (or type a name), how many (empty = no limit), a short note, and **Publish**. On the right, your current posts: a click loads one into the form to change it (the button becomes **"Save changes"**), a right click closes it, after asking.
+
+Hovering a post with an item or recipe shows the game's tooltip, as in chat; shift-click puts the link in the chat box.
 
 Every post **expires after 7 days** (`/trueque days N`, 1 to 30) or when you close it. A player has up to 20 posts at a time.
 

@@ -51,6 +51,37 @@ function B.Publish(kind, linkText, qty, note)
 	return post
 end
 
+-- One of mine by id.
+function B.Get(id)
+	for _, post in ipairs(B.Mine()) do
+		if post.id == id then
+			return post
+		end
+	end
+end
+
+-- Change one of mine: same id, same date, new kind/link/quantity/note; it is marked edited and the guild
+-- hears it again as N|id (same id, so their copy is replaced). Returns the post, or nil and why.
+function B.Update(id, kind, linkText, qty, note)
+	local post = B.Get(id)
+	if not post then
+		return nil, L.GONE
+	end
+	local ref, name = ns.ParseLink(linkText)
+	name = (name or ""):gsub("^%s+", ""):gsub("%s+$", "")
+	if name == "" then
+		return nil, L.NEED_LINK
+	end
+	post.kind = kind
+	post.ref = ref
+	post.name = name:sub(1, 60)
+	post.qty = tonumber(qty) and math.max(1, math.floor(tonumber(qty))) or nil
+	post.note = (note or ""):sub(1, ns.MAX_NOTE)
+	post.edited = ns.Now()
+	ns.Fire("published", post)
+	return post
+end
+
 -- Close one of mine ("done"): it leaves my list and the guild hears X|id.
 function B.Close(id)
 	local mine = B.Mine()
@@ -81,7 +112,8 @@ function B.Expire(now)
 	end
 end
 
--- Everything on the guild's board (theirs and mine), newest first; kind filters, query searches the name.
+-- Everything on the guild's board (theirs and mine), newest first (so what was just posted is at the top);
+-- kind filters, query searches the name and the note.
 function B.All(kind, query)
 	local out = {}
 	query = query and query:lower() or ""
