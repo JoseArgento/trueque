@@ -24,7 +24,7 @@ end
 
 ns.DEFAULT_DAYS = 7
 ns.MAX_POSTS = 20
-ns.MAX_NOTE = 60
+ns.MAX_NOTE = 90
 ns.KINDS = { "want", "have", "craft" }
 ns.KIND_LABEL = { want = "KIND_WANT", have = "KIND_HAVE", craft = "KIND_CRAFT" }
 ns.KIND_TAG = { want = "TAG_WANT", have = "TAG_HAVE", craft = "TAG_CRAFT" }
@@ -153,20 +153,65 @@ function ns.ItemID(post)
 	return tonumber(post.ref and post.ref:match("^item:(%d+)"))
 end
 
+-- A chat link for a ref and a name: the item's quality colour when the client knows the item, else white.
+function ns.RefLink(ref, name)
+	name = (name and name ~= "") and name or (ref or "")
+	if not ns.ValidRef(ref) then
+		return name
+	end
+	local color = "ffffffff"
+	local id = tonumber(ref:match("^item:(%d+)"))
+	if id and C_Item and C_Item.GetItemQualityByID then
+		-- the ref ("item:123") is an itemInfo the API takes, so the colour of unknown items is plain white
+		local q = C_Item.GetItemQualityByID(ref)
+		if q and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[q] then
+			color = ITEM_QUALITY_COLORS[q].hex and ITEM_QUALITY_COLORS[q].hex:gsub("^|c", "") or color
+		end
+	end
+	return "|c" .. color .. "|H" .. ref .. "|h[" .. name .. "]|h|r"
+end
+
 -- A link to show for a post: the real item link when the client knows the item, else a plain one.
 function ns.PostLink(post)
-	local name = post.name ~= "" and post.name or (post.ref or "")
 	if post.ref then
-		local id = ns.ItemID(post)
-		local color = "ffffffff"
-		if id and C_Item and C_Item.GetItemQualityByID then
-			-- the ref ("item:123") is an itemInfo the API takes, so the colour of unknown items is plain white
-			local q = C_Item.GetItemQualityByID(post.ref)
-			if q and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[q] then
-				color = ITEM_QUALITY_COLORS[q].hex and ITEM_QUALITY_COLORS[q].hex:gsub("^|c", "") or color
-			end
-		end
-		return "|c" .. color .. "|H" .. post.ref .. "|h[" .. name .. "]|h|r"
+		return ns.RefLink(post.ref, post.name)
 	end
-	return name
+	return post.name ~= "" and post.name or (post.ref or "")
+end
+
+-- Links inside a note travel as "{item:2996:Wool Cloth}" (no "|", so they never break a message); on
+-- screen they become real links. Anything that is not a valid ref stays as the plain text it was.
+function ns.NoteToken(ref, name)
+	return "{" .. ref .. ":" .. (name or ""):gsub("[{}]", "") .. "}"
+end
+
+function ns.NoteText(note)
+	return (tostring(note or ""):gsub("{(%l+:[%w%-_:]-):([^{}]*)}", function(ref, name)
+		if ns.ValidRef(ref) then
+			return ns.RefLink(ref, name)
+		end
+		return "[" .. name .. "]"
+	end))
+end
+
+-- The note as the player edits it: links as "[Name]", with the refs kept aside to put back on save.
+function ns.NoteForEdit(note)
+	local links = {}
+	local text = (tostring(note or ""):gsub("{(%l+:[%w%-_:]-):([^{}]*)}", function(ref, name)
+		if ns.ValidRef(ref) then
+			links[name] = ref
+		end
+		return "[" .. name .. "]"
+	end))
+	return text, links
+end
+
+function ns.NoteFromEdit(text, links)
+	return (tostring(text or ""):gsub("%[([^%[%]]+)%]", function(name)
+		local ref = links and links[name]
+		if ref then
+			return ns.NoteToken(ref, name)
+		end
+		return "[" .. name .. "]"
+	end))
 end

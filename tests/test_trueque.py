@@ -304,7 +304,9 @@ def test_without_a_guild_nothing_is_sent_and_the_board_says_so():
     lines = c.run("return ns.UI.BoardLines()")
     assert lines.empty is None and lines.note == "No guild: only your own posts show here."
     f = c.open()
-    assert f.empty._shown is False and f.note._shown is True
+    assert f.empty._shown is False and f.boardNote._shown is True
+    # the board's note never lands in the form's note field (it did once: both were f.note)
+    assert f.note._text == ""
 
 
 def test_opening_the_board_asks_again_at_most_once_a_minute(me):
@@ -481,7 +483,7 @@ def test_the_book_opens_with_two_bookmarks_and_empty_states(me):
     f = me.open()
     assert f.selected == "board" and f.tabs.board is not None and f.tabs.mine is not None
     assert f.pageR is not None  # two pages
-    assert f.empty._shown is True and f.note._shown is False
+    assert f.empty._shown is True and f.boardNote._shown is False
     assert f.empty._text.startswith("Nothing posted yet.")
     # the search box sits in its own row under the chips, full width
     pts = me.run("local p = ns.UI.frame.search._points; return p[1][2] == ns.UI.frame.filters.all, p[1][1]")
@@ -647,3 +649,31 @@ def test_a_handler_error_is_kept_said_once_and_shown_to_copy(me):
     me.run("ns.UI.Toggle = function() error('boom') end")
     me.slash("")
     assert me.run("return ns.db.errors[1].label") == "slash"
+
+
+# links inside notes -------------------------------------------------------------------------------
+
+
+def test_a_shift_clicked_item_in_the_note_travels_as_a_token_and_shows_as_a_link(me, ana):
+    f = me.open()
+    me.run("ns.UI.frame:SelectTab('mine')")
+    me.run(f"ns.UI.frame.link:SetText([[{LINEN}]]); ns.UI.frame.note:SetText('I trade it for'); ns.UI.frame.note:SetFocus()")
+    me.run(f"ChatFrameUtil.InsertLink([[{WOOL}]])")
+    assert f.note._text == "I trade it for [Linen Cloth]"
+    me.run("ns.UI.PublishFromForm()")
+    post = me.mine()[0]
+    assert post.note == "I trade it for {item:2589:Linen Cloth}"
+    # on screen (rows and detail) it is a real link; the sync message carries no "|"
+    assert "|Hitem:2589|h[Linen Cloth]|h" in me.run("return ns.NoteText(ns.Board.Mine()[1].note)")
+    msg = me.sent()[-1][1]
+    assert "{item:2589:Linen Cloth}" in msg and "|H" not in msg
+    # Ana gets the same link, and a bogus token stays plain text
+    ana.receive(msg, "Josecito-Forever")
+    assert "|Hitem:2589|h[Linen Cloth]|h" in ana.run("return ns.NoteText(ns.Board.All()[1].note)")
+    assert ana.run("return ns.NoteText('see {item:abc:Bad}')") == "see [Bad]"
+    # editing shows "[Linen Cloth]" again and saving keeps the ref
+    me.run(f"ns.UI.Edit('{post.id}')")
+    assert f.note._text == "I trade it for [Linen Cloth]"
+    me.run("ns.UI.frame.note:SetText('now [Linen Cloth] or gold')")
+    me.run("ns.UI.PublishFromForm()")
+    assert me.mine()[0].note == "now {item:2589:Linen Cloth} or gold"

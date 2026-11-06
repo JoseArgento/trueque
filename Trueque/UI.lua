@@ -33,7 +33,7 @@ function UI.RowText(post)
 		sub = sub .. " · " .. L.EDITED
 	end
 	if post.note and post.note ~= "" then
-		sub = post.note .. " · " .. sub
+		sub = ns.NoteText(post.note) .. " · " .. sub
 	end
 	return head, sub, L[ns.KIND_TAG[post.kind]], #B.Matches(post) > 0
 end
@@ -62,7 +62,7 @@ function UI.Detail(post)
 		d.sub = d.sub .. " · " .. L.EDITED
 	end
 	d.qty = post.qty and L.QTY:format(post.qty) or L.QTY_NONE
-	d.note = post.note ~= "" and post.note or nil
+	d.note = post.note ~= "" and ns.NoteText(post.note) or nil
 	d.expires = ns.Span(post.exp - ns.Now())
 	if d.mine then
 		d.button = L.DONE
@@ -188,10 +188,10 @@ local function buildBoard(f)
 	f.empty:SetPoint("RIGHT", left, "RIGHT", -10, 0)
 	f.empty:SetWordWrap(true)
 	-- a short line under the list when there is no guild but there are posts of mine
-	f.note = P.Label(left, "", "muted", "CENTER")
-	f.note:SetPoint("BOTTOMLEFT", left, "BOTTOMLEFT", 0, 0)
-	f.note:SetPoint("RIGHT", left, "RIGHT", -14, 0)
-	f.note:SetWordWrap(true)
+	f.boardNote = P.Label(left, "", "muted", "CENTER")
+	f.boardNote:SetPoint("BOTTOMLEFT", left, "BOTTOMLEFT", 0, 0)
+	f.boardNote:SetPoint("RIGHT", left, "RIGHT", -14, 0)
+	f.boardNote:SetWordWrap(true)
 
 	local holder = P.Panel(left)
 	holder:SetPoint("TOPLEFT", rule, "BOTTOMLEFT", 0, -8)
@@ -349,8 +349,13 @@ local function buildMine(f)
 	-- shift-click while a field has focus pastes the link (Forever's ChatFrameUtil.InsertLink)
 	if ChatFrameUtil and ChatFrameUtil.InsertLink then
 		hooksecurefunc(ChatFrameUtil, "InsertLink", function(text)
-			if text and left:IsVisible() and f.link:HasFocus() then
+			if not (text and left:IsVisible()) then
+				return
+			end
+			if f.link:HasFocus() then
 				f.link:SetValue(text)
+			elseif f.note:HasFocus() then
+				UI.InsertNoteLink(text)
 			end
 		end)
 	end
@@ -411,9 +416,9 @@ function UI.PublishFromForm()
 	local f = UI.frame
 	local post, why
 	if UI.editing then
-		post, why = B.Update(UI.editing, UI.kind, f.link:GetText() or "", f.qty:GetText(), f.note:GetText() or "")
+		post, why = B.Update(UI.editing, UI.kind, f.link:GetText() or "", f.qty:GetText(), ns.NoteFromEdit(f.note:GetText(), UI.noteLinks))
 	else
-		post, why = B.Publish(UI.kind, f.link:GetText() or "", f.qty:GetText(), f.note:GetText() or "")
+		post, why = B.Publish(UI.kind, f.link:GetText() or "", f.qty:GetText(), ns.NoteFromEdit(f.note:GetText(), UI.noteLinks))
 	end
 	if not post then
 		ns.Print(why)
@@ -431,7 +436,27 @@ function UI.ClearForm()
 	f.link:SetValue("")
 	f.qty:SetValue("")
 	f.note:SetValue("")
+	UI.noteLinks = {}
 	f.link:SetFocus()
+end
+
+-- A shift-clicked link while the note has focus: "[Name]" goes into the text, the ref is kept for the save.
+UI.noteLinks = {}
+function UI.InsertNoteLink(text)
+	local ref, name = ns.ParseLink(text)
+	if not ref or name == "" then
+		return false
+	end
+	UI.noteLinks[name] = ref
+	local f = UI.frame
+	local cur = f.note:GetText() or ""
+	local sep = (cur == "" or cur:sub(-1) == " ") and "" or " "
+	local new = cur .. sep .. "[" .. name .. "]"
+	if #ns.NoteFromEdit(new, UI.noteLinks) > ns.MAX_NOTE then
+		return false
+	end
+	f.note:SetValue(new)
+	return true
 end
 
 -- Load one of mine into the form: the chips, the link, the quantity and the note; Publish becomes Save.
@@ -445,7 +470,9 @@ function UI.Edit(id)
 	UI.kind = post.kind
 	f.link:SetValue(ns.PostLink(post))
 	f.qty:SetValue(post.qty and tostring(post.qty) or "")
-	f.note:SetValue(post.note or "")
+	local text, links = ns.NoteForEdit(post.note)
+	f.note:SetValue(text)
+	UI.noteLinks = links
 	f:SelectTab("mine")
 	f:Show()
 	UI.Refresh()
@@ -538,8 +565,8 @@ function UI.Refresh()
 		end
 		f.empty:SetText(lines.empty or "")
 		f.empty:SetShown(lines.empty ~= nil)
-		f.note:SetText(lines.note or "")
-		f.note:SetShown(lines.note ~= nil)
+		f.boardNote:SetText(lines.note or "")
+		f.boardNote:SetShown(lines.note ~= nil)
 		f.list:SetData(lines.rows, true)
 		-- the chosen post may be gone (closed, expired)
 		if UI.selected then
