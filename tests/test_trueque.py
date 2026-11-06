@@ -368,7 +368,7 @@ def test_my_own_post_gets_edit_and_done_and_done_asks_first(me):
     f = me.open()
     me.run("ns.UI.selected = ns.Board.Mine()[1]; ns.UI.Refresh()")
     assert f.dButton._text == "Done" and f.dEdit._shown is True
-    assert f.dQty._text == "x3" and f.dNote._text == "bank" and f.dExp._text == "7 d"
+    assert f.dQty._text == "x3" and f.dNote.text == "bank" and f.dExp._text == "7 d"
     me.run("ns.UI.frame.dButton:GetScript('OnClick')()")
     # nothing closed yet: a popup asks
     assert me.mine() != []
@@ -530,7 +530,7 @@ def test_a_row_says_what_a_post_is(me, ana):
     theirs = ana.publish("want", LINEN, 4, "for shirts")
     deliver(ana, me)
     head, sub, tag, match = me.run(f"return ns.UI.RowText(ns.Board.Guild()['{theirs.id}'])")
-    assert head == "|cffffffff|Hitem:2996|h[Bolt of Linen Cloth]|h|r x4"
+    assert head == "|cff3a2313|Hitem:2996|h[Bolt of Linen Cloth]|h|r x4"
     assert sub == "for shirts · by Ana · posted 1 min ago" and tag == "want" and match is False
     me.publish("have", LINEN)
     _, _, _, match = me.run(f"return ns.UI.RowText(ns.Board.Guild()['{theirs.id}'])")
@@ -677,3 +677,20 @@ def test_a_shift_clicked_item_in_the_note_travels_as_a_token_and_shows_as_a_link
     me.run("ns.UI.frame.note:SetText('now [Linen Cloth] or gold')")
     me.run("ns.UI.PublishFromForm()")
     assert me.mine()[0].note == "now {item:2589:Linen Cloth} or gold"
+
+
+def test_page_links_wear_ink_and_chat_links_keep_the_game_colours(me):
+    post = me.publish("have", LINEN, 1, "")
+    assert me.run(f"return ns.PostLink(ns.Board.Get('{post.id}'))").startswith("|cff3a2313|H")
+    assert me.run(f"return ns.PostLink(ns.Board.Get('{post.id}'), 'chat')").startswith("|cffffffff|H")
+
+
+def test_shift_click_with_a_field_focused_is_taken_so_the_stack_is_not_split(me):
+    f = me.open()
+    me.run("ns.UI.frame:SelectTab('mine')")
+    me.run("ns.UI.frame.link:SetFocus()")
+    # the wrapped InsertLink returns true (the game splits a stack only on false)
+    assert me.run(f"return ChatFrameUtil.InsertLink([[{WOOL}]])") is True
+    assert f.link._text == WOOL
+    me.run("ns.UI.frame.link:ClearFocus()")
+    assert me.run(f"return ChatFrameUtil.InsertLink([[{WOOL}]])") is False

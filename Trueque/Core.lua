@@ -153,16 +153,19 @@ function ns.ItemID(post)
 	return tonumber(post.ref and post.ref:match("^item:(%d+)"))
 end
 
--- A chat link for a ref and a name: the item's quality colour when the client knows the item, else white.
-function ns.RefLink(ref, name)
+-- A chat link for a ref and a name. On the page ("page", the default) it wears the lib's parchment
+-- quality colours (white and grey read as ink); in the chat ("chat") the game's own colours.
+function ns.RefLink(ref, name, where)
 	name = (name and name ~= "") and name or (ref or "")
 	if not ns.ValidRef(ref) then
 		return name
 	end
+	if where ~= "chat" then
+		return Pergamino.RefLink(ref, name)
+	end
 	local color = "ffffffff"
 	local id = tonumber(ref:match("^item:(%d+)"))
 	if id and C_Item and C_Item.GetItemQualityByID then
-		-- the ref ("item:123") is an itemInfo the API takes, so the colour of unknown items is plain white
 		local q = C_Item.GetItemQualityByID(ref)
 		if q and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[q] then
 			color = ITEM_QUALITY_COLORS[q].hex and ITEM_QUALITY_COLORS[q].hex:gsub("^|c", "") or color
@@ -172,9 +175,9 @@ function ns.RefLink(ref, name)
 end
 
 -- A link to show for a post: the real item link when the client knows the item, else a plain one.
-function ns.PostLink(post)
+function ns.PostLink(post, where)
 	if post.ref then
-		return ns.RefLink(post.ref, post.name)
+		return ns.RefLink(post.ref, post.name, where)
 	end
 	return post.name ~= "" and post.name or (post.ref or "")
 end

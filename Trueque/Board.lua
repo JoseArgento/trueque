@@ -186,7 +186,7 @@ function B.TellMatches()
 			if not told[key] then
 				told[key] = true
 				local fmt = other.kind == "have" and L.MATCH_HAVE or other.kind == "craft" and L.MATCH_CRAFT or L.MATCH_WANT
-				ns.Print(L.MATCH_LINE:format(fmt:format(ns.Short(other.by), ns.PostLink(other))))
+				ns.Print(L.MATCH_LINE:format(fmt:format(ns.Short(other.by), ns.PostLink(other, "chat"))))
 			end
 		end
 	end
@@ -199,7 +199,7 @@ function B.Whisper(post)
 		return nil
 	end
 	local fmt = post.kind == "want" and L.WHISPER_HAVE or post.kind == "craft" and L.WHISPER_CRAFT or L.WHISPER_WANT
-	local text = fmt:format(ns.PostLink(post))
+	local text = fmt:format(ns.PostLink(post, "chat"))
 	if C_ChatInfo and C_ChatInfo.SendChatMessage then
 		C_ChatInfo.SendChatMessage(text, "WHISPER", nil, post.by)
 	elseif SendChatMessage then

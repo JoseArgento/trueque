@@ -96,7 +96,7 @@ function UI.ChatLink(post)
 	end
 	-- ChatFrameUtil.InsertLink is Forever's (the deprecated ChatEdit_InsertLink is not needed)
 	if ChatFrameUtil and ChatFrameUtil.InsertLink then
-		return ChatFrameUtil.InsertLink(ns.PostLink(post)) and true or false
+		return ChatFrameUtil.InsertLink(ns.PostLink(post, "chat")) and true or false
 	end
 	return false
 end
@@ -246,6 +246,12 @@ local function buildBoard(f)
 	end
 	f.dQtyHead, f.dQty = detailRow(f.dSub, L.QTY_HEAD)
 	f.dNoteHead, f.dNote = detailRow(f.dQty, L.NOTE)
+	-- the note may carry links: a LinkText shows the game's tooltip over them (a FontString cannot)
+	f.dNote:Hide()
+	f.dNote = P.LinkText(right, "")
+	f.dNote:SetPoint("TOPLEFT", f.dNoteHead, "BOTTOMLEFT", 0, -3)
+	f.dNote:SetPoint("RIGHT")
+	f.dNote:SetHeight(40)
 	f.dExpHead, f.dExp = detailRow(f.dNote, L.EXPIRES_HEAD)
 	f.dMatches = P.Label(right, "", "body")
 	f.dMatches:SetPoint("TOPLEFT", f.dExp, "BOTTOMLEFT", 0, -14)
@@ -346,19 +352,12 @@ local function buildMine(f)
 	f.mineEmpty:SetPoint("RIGHT", left, "RIGHT", 0, 0)
 	f.mineEmpty:SetWordWrap(true)
 
-	-- shift-click while a field has focus pastes the link (Forever's ChatFrameUtil.InsertLink)
-	if ChatFrameUtil and ChatFrameUtil.InsertLink then
-		hooksecurefunc(ChatFrameUtil, "InsertLink", function(text)
-			if not (text and left:IsVisible()) then
-				return
-			end
-			if f.link:HasFocus() then
-				f.link:SetValue(text)
-			elseif f.note:HasFocus() then
-				UI.InsertNoteLink(text)
-			end
-		end)
-	end
+	-- shift-click on an item while a field has focus: the link goes to the field, and the game does not
+	-- open the stack-split dialog (Pergamino wraps ChatFrameUtil.InsertLink for that)
+	P.AcceptLinks(f.link)
+	P.AcceptLinks(f.note, function(text)
+		UI.InsertNoteLink(text)
+	end)
 
 	f.mineList = P.Label(right, L.MINE_LIST, "heading")
 	f.mineList:SetPoint("TOPLEFT")
@@ -424,7 +423,7 @@ function UI.PublishFromForm()
 		ns.Print(why)
 		return nil
 	end
-	ns.Print((UI.editing and L.UPDATED or L.PUBLISHED):format(ns.PostLink(post)))
+	ns.Print((UI.editing and L.UPDATED or L.PUBLISHED):format(ns.PostLink(post, "chat")))
 	UI.editing = nil
 	UI.ClearForm()
 	UI.Refresh()
@@ -468,7 +467,7 @@ function UI.Edit(id)
 	local f = UI.frame
 	UI.editing = id
 	UI.kind = post.kind
-	f.link:SetValue(ns.PostLink(post))
+	f.link:SetValue(ns.PostLink(post, "chat"))
 	f.qty:SetValue(post.qty and tostring(post.qty) or "")
 	local text, links = ns.NoteForEdit(post.note)
 	f.note:SetValue(text)
@@ -493,7 +492,7 @@ StaticPopupDialogs[ADDON .. "_CLOSE"] = {
 	OnAccept = function(_, id)
 		local post = B.Close(id)
 		if post then
-			ns.Print(L.CLOSED:format(ns.PostLink(post)))
+			ns.Print(L.CLOSED:format(ns.PostLink(post, "chat")))
 			if UI.editing == id then
 				UI.editing = nil
 				UI.ClearForm()
@@ -591,6 +590,7 @@ function UI.Refresh()
 			f.dQty:SetText(d.qty)
 			f.dNoteHead:SetShown(d.note ~= nil)
 			f.dNote:SetText(d.note or "")
+			f.dNote:Fit()
 			f.dNote:SetShown(d.note ~= nil)
 			-- without a note, Expires moves up under Quantity
 			f.dExpHead:ClearAllPoints()

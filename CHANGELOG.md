@@ -4,7 +4,9 @@
 
 Primera versión, para WoW Forever 1.60.1 (interfaz 16001).
 
-- Links de ítems adentro de la nota (Shift-clic con la nota enfocada; viajan como texto sin "|") y la nota de "sin guild" ya no se mete en el campo de nota del formulario.
+- Links de ítems adentro de la nota (Shift-clic con la nota enfocada; viajan como texto sin "|"), con el tooltip del juego al pasar el mouse en el detalle, y la nota de "sin guild" ya no se mete en el campo de nota del formulario.
+- Los links en el libro usan colores de calidad para pergamino (blanco y gris se leen como tinta); en el chat siguen con los colores del juego.
+- Shift-clic en una pila con un campo enfocado ya no abre el diálogo de partir la pila (Pergamino 6).
 - Tablón de guild con avisos de tres tipos: Quiero, Tengo, Puedo hacer. Ítem o receta por Shift-clic, cantidad, nota, vencimiento a los 7 días (`/trueque dias N`), hasta 20 avisos por jugador.
 - Sincronizado por mensajes de addon en el canal de guild (prefijo `Trueque1`): pregunta al entrar y al abrir el tablón, cada uno responde con sus avisos, y los cambios viajan al momento. Nada de lo recibido se ejecuta; solo el autor puede cerrar o cambiar un aviso.
 - "Lo tengo" y "Me interesa" susurran al autor una línea ya escrita, solo desde el clic.
