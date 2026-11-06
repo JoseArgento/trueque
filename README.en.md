@@ -6,6 +6,8 @@ It pairs with [Taller](https://github.com/JoseArgento/taller): what you're missi
 
 [Leer en castellano](README.md)
 
+![Trueque in the game: the guild board with a post open](docs/libro.png)
+
 **Contents**
 
 - [How to use it](#how-to-use-it)
@@ -53,14 +55,13 @@ Copy the `Trueque` folder into `Interface\AddOns\` inside the game's Forever fol
 **Tested:**
 - ✅ Every function it uses exists in Forever 1.60.1: `tools/check_api.py` against the dumps of [Ketho/BlizzardInterfaceResources](https://github.com/Ketho/BlizzardInterfaceResources) and the UI of [Gethe/wow-ui-source](https://github.com/Gethe/wow-ui-source), `forever` branch.
 - ✅ [forever-lint](https://github.com/JoseArgento/forever-lint) only shows the FL012 note (trial accounts, handled); Addon Sentry: "No risk signals" (all it can do is whisper, and only from a click).
-- ✅ **41 tests** in Lua 5.1 (WoW's Lua) with several players of one guild passing messages around: publish, close and expire; ask and answer; nobody can close or overwrite someone else's post; broken and hostile messages dropped or reduced to text; `|` and `%` in text; the cap of 20 and the 250 bytes; matches, said once; the whisper only from a click; trial accounts; no guild; language; the book and the form; Taller present, absent and broken; the addon's own errors kept.
+- ✅ **50 tests** in Lua 5.1 (WoW's Lua) with several players of one guild passing messages around: publish, close and expire; ask and answer; nobody can close or overwrite someone else's post; broken and hostile messages dropped or reduced to text; `|` and `%` in text; the cap of 20 and the 250 bytes; matches, said once; the whisper only from a click; trial accounts; no guild; language; the book and the form; Taller present, absent and broken; the addon's own errors kept.
 
-**Not seen in the client yet ⏳:**
-- Everything visual: the book, the tags, the chips, the minimap button.
-- That `C_ChatInfo.SendChatMessage` with `WHISPER` reaches "Name-Realm" as the sender arrives in `CHAT_MSG_ADDON`.
-- That `ChatFrameUtil.InsertLink` is what Forever calls on shift-click with a focused field (it is what Bitácora uses).
-- The link colour of an item the client has not loaded yet (white until it knows it).
-- A whole guild running it at once.
+**In the client** (6 November, without a guild): the book, the chips, the search box, publishing, editing and closing, shift-click into the field and into the note (no stack split), links in parchment colours, the game's tooltip over links in the note, and the minimap button.
+
+**Not seen yet ⏳:**
+- A whole guild running it at once: the messages, the "match" and the whisper (`C_ChatInfo.SendChatMessage` with `WHISPER` to "Name-Realm" as it arrives in `CHAT_MSG_ADDON`) were tested with several simulated clients.
+- "Post what I'm missing" with Taller installed.
 
 **If something breaks:** `/trueque errores` shows the addon's last error (the last 10 are kept, no popups) to paste into a GitHub issue.
 

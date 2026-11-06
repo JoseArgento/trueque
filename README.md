@@ -6,6 +6,8 @@ Es la pareja de [Taller](https://github.com/JoseArgento/taller): lo que te falta
 
 [Read in English](README.en.md)
 
+![Trueque en el juego: el tablón de la guild con un aviso abierto](docs/libro.png)
+
 **Contenido**
 
 - [Cómo se usa](#cómo-se-usa)
@@ -53,14 +55,13 @@ Copiá la carpeta `Trueque` a `Interface\AddOns\`, dentro de la carpeta de Forev
 **Probado:**
 - ✅ Cada función que usa existe en Forever 1.60.1: `tools/check_api.py` contra los dumps de [Ketho/BlizzardInterfaceResources](https://github.com/Ketho/BlizzardInterfaceResources) y la UI de [Gethe/wow-ui-source](https://github.com/Gethe/wow-ui-source), rama `forever`.
 - ✅ [forever-lint](https://github.com/JoseArgento/forever-lint) solo con la nota FL012 (cuentas de prueba, manejada); Addon Sentry: "Sin señales de riesgo" (lo único que puede hacer es susurrar, y es desde el clic).
-- ✅ **41 tests** en Lua 5.1 (el Lua de WoW) con varios jugadores de la misma guild pasándose los mensajes: publicar, cerrar y vencer; preguntar y responder; que nadie pueda cerrar o pisar el aviso de otro; mensajes rotos y hostiles descartados o reducidos a texto; `|` y `%` en los textos; el tope de 20 y los 250 bytes; los cruces y el aviso una sola vez; que el susurro salga solo del clic; cuentas de prueba; sin guild; idioma; el libro y el formulario; Taller presente, ausente y roto; los errores propios guardados.
+- ✅ **50 tests** en Lua 5.1 (el Lua de WoW) con varios jugadores de la misma guild pasándose los mensajes: publicar, cerrar y vencer; preguntar y responder; que nadie pueda cerrar o pisar el aviso de otro; mensajes rotos y hostiles descartados o reducidos a texto; `|` y `%` en los textos; el tope de 20 y los 250 bytes; los cruces y el aviso una sola vez; que el susurro salga solo del clic; cuentas de prueba; sin guild; idioma; el libro y el formulario; Taller presente, ausente y roto; los errores propios guardados.
 
-**Todavía sin ver en el cliente ⏳:**
-- Todo lo visual: el libro, las etiquetas, los chips, el botón del minimapa.
-- Que `C_ChatInfo.SendChatMessage` con `WHISPER` mande el susurro a "Nombre-Reino" tal como llega el remitente en `CHAT_MSG_ADDON`.
-- Que `ChatFrameUtil.InsertLink` sea lo que Forever llama al hacer Shift-clic con un campo con foco (es lo que usa Bitácora).
-- El color del link de un ítem que el cliente todavía no cargó (sale blanco hasta que lo conoce).
-- Una guild entera con el addon a la vez.
+**En el cliente** (6/11, sin guild): el libro, los chips, el buscador, publicar, cambiar y cerrar, el Shift-clic en el campo y en la nota (sin partir la pila), los links con los colores de pergamino, el tooltip del juego sobre los links de la nota y el botón del minimapa.
+
+**Todavía sin ver ⏳:**
+- Una guild entera con el addon a la vez: los mensajes, el "hay uno" y el susurro (`C_ChatInfo.SendChatMessage` con `WHISPER` a "Nombre-Reino" tal como llega en `CHAT_MSG_ADDON`) se probaron con varios clientes simulados.
+- "Publicar lo que me falta" con Taller instalado.
 
 **Si algo falla:** `/trueque errores` muestra el último error del addon (se guardan los últimos 10, sin popups) para copiarlo en un issue de GitHub.
 
