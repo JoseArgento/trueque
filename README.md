@@ -8,6 +8,8 @@ Es la pareja de [Taller](https://github.com/JoseArgento/taller): lo que te falta
 
 ![Trueque en el juego: el tablón de la guild con un aviso abierto](docs/libro.png)
 
+**Descargar:** en [CurseForge](https://www.curseforge.com/wow/addons/trueque) (también con la app de CurseForge o WowUp) o el zip de las [releases](https://github.com/JoseArgento/trueque/releases).
+
 **Contenido**
 
 - [Cómo se usa](#cómo-se-usa)

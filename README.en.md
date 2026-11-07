@@ -8,6 +8,8 @@ It pairs with [Taller](https://github.com/JoseArgento/taller): what you're missi
 
 ![Trueque in the game: the guild board with a post open](docs/libro.png)
 
+**Download:** on [CurseForge](https://www.curseforge.com/wow/addons/trueque) (also through the CurseForge app or WowUp) or the zip from the [releases](https://github.com/JoseArgento/trueque/releases).
+
 **Contents**
 
 - [How to use it](#how-to-use-it)
