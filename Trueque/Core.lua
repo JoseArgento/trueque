@@ -146,7 +146,7 @@ function ns.ParseLink(text)
 		end
 		return nil, name
 	end
-	return nil, (text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""))
+	return nil, (text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|cn[^:|]*:", ""):gsub("|r", ""))
 end
 
 function ns.ItemID(post)
@@ -165,6 +165,14 @@ function ns.RefLink(ref, name, where)
 	end
 	local color = "ffffffff"
 	local id = tonumber(ref:match("^item:(%d+)"))
+	-- the game's own link when it knows the item: exactly what the chat expects (Forever writes item links
+	-- with a named quality colour, "|cnIQ2:", not a hex one)
+	if id and C_Item and C_Item.GetItemInfo then
+		local ok, _, real = pcall(C_Item.GetItemInfo, id)
+		if ok and type(real) == "string" and not (issecretvalue and issecretvalue(real)) and real:find("|Hitem:" .. id, 1, true) then
+			return real
+		end
+	end
 	if id and C_Item and C_Item.GetItemQualityByID then
 		local q = C_Item.GetItemQualityByID(ref)
 		if q and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[q] then

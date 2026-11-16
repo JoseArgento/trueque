@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.0 (sin publicar)
+
+- **El botón ya no queda afuera del botón único de la familia** (Pergamino 8). Con "un solo botón para la familia" elegido en otro addon, uno que mostraba su botón después quedaba afuera (pasó con Taller). La elección ahora se guarda en todos los addons de la familia, así se mantiene con cualquiera que tengas activado (`/trueque minimapa juntar on|off` desde cualquiera), y el botón único recuerda adónde lo arrastraste.
+- **Links al chat con el link del juego.** Al mandar un aviso al chat (shift-clic), el ítem va con el link que arma el propio juego cuando lo conoce (Forever escribe los links con un color con nombre, `|cnIQ2:`); antes iba uno armado a mano con color hexadecimal. Si el juego todavía no vio el ítem, sigue saliendo el armado a mano.
+
 ## 0.2.0 (2026-11-07)
 
 - **Botón de minimapa como los del juego** (Pergamino 7): aro dorado biselado, disco oscuro, sombra, ícono crema; `/trueque minimapa juntar on|off` junta todos los addons de la familia en un solo botón con menú. Los errores del botón del minimapa y del compartimento también quedan guardados (`/trueque errores`).

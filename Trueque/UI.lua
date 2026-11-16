@@ -674,9 +674,8 @@ function UI.Minimap()
 			guard = ns.guard,
 			hub = { addon = L.TITLE, label = L.TITLE, order = 7 },
 		})
-		if s.minimapMerged ~= nil then
-			P.MinimapHub.SetMerged(s.minimapMerged)
-		end
+		-- the family's choice (one button for all) lives in every addon's settings: the hub reads and keeps it
+		P.MinimapHub.Bind(s)
 	end
 	UI.minimap:SetShown(s.minimap)
 	return UI.minimap
@@ -684,8 +683,7 @@ end
 
 -- /trueque minimapa juntar on|off: one button for the whole family (the lib keeps it for every addon)
 function UI.SetMinimapMerged(merged)
-	ns.db.settings.minimapMerged = merged and true or false
-	P.MinimapHub.SetMerged(merged)
+	P.MinimapHub.Choose(merged) -- saved by the hub in every addon's settings
 	ns.Print(merged and L.MINIMAP_MERGED_ON or L.MINIMAP_MERGED_OFF)
 end
 

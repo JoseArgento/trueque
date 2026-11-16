@@ -715,3 +715,19 @@ def test_an_error_in_the_minimap_click_or_the_compartment_is_kept(me):
     me.run("Trueque_OnAddonCompartmentClick()")
     errs = me.run("return ns.guard.Errors()")
     assert sorted(e.label for e in errs.values()) == ["compartment", "minimap"]
+
+
+def test_a_chat_link_is_the_games_own_link_when_the_client_knows_the_item(me):
+    # Forever writes item links with a named quality colour ("|cnIQ1:"): a hand-made hex one may not be what the
+    # chat expects, so the game's own link goes out whenever it can give one
+    post = me.publish("have", LINEN, 1, "")
+    real = "|cnIQ1:|Hitem:2996::::::::16:1485:::::::::|h[Bolt of Linen Cloth]|h|r"
+    me.m.real = real
+    me.run("C_Item.GetItemInfo = function(id) if id == 2996 then return 'Bolt of Linen Cloth', MOCK.real end end")
+    assert me.run(f"return ns.PostLink(ns.Board.Get('{post.id}'), 'chat')") == real
+    # on the page it stays in ink, and an item the client has not seen yet falls back to the plain link
+    assert me.run(f"return ns.PostLink(ns.Board.Get('{post.id}'))").startswith("|cff3a2313|H")
+    me.run("C_Item.GetItemInfo = function() return nil end")
+    assert me.run(f"return ns.PostLink(ns.Board.Get('{post.id}'), 'chat')") == "|cffffffff|Hitem:2996|h[Bolt of Linen Cloth]|h|r"
+    me.run("C_Item.GetItemInfo = function() error('boom') end")
+    assert me.run(f"return ns.PostLink(ns.Board.Get('{post.id}'), 'chat')").endswith("[Bolt of Linen Cloth]|h|r")
