@@ -22,6 +22,21 @@ function B.Guild()
 	return ns.db.board[key]
 end
 
+-- Before 0.3.0 the echo of my own messages was kept on the guild's board as another player's post (the
+-- sender is "Name Second", my key "Name-Second"): every post of mine showed twice. Those copies go.
+function B.DropEchoes()
+	local prefix, dropped = ns.charKey .. "-", 0
+	for _, board in pairs(ns.db.board) do
+		for id, post in pairs(board) do
+			if id:sub(1, #prefix) == prefix or (type(post) == "table" and Pergamino.IsMe(post.by) and post.by ~= ns.charKey) then
+				board[id] = nil
+				dropped = dropped + 1
+			end
+		end
+	end
+	return dropped
+end
+
 -- Publish: kind, the link text (or a plain name), a quantity and a note. Returns the post, or nil and why.
 function B.Publish(kind, linkText, qty, note)
 	local mine = B.Mine()

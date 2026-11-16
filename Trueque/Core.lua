@@ -52,6 +52,7 @@ function ns.InitDB()
 	db.mine = type(db.mine) == "table" and db.mine or {}
 	db.board = type(db.board) == "table" and db.board or {}
 	ns.db = db
+	db.names = type(db.names) == "table" and db.names or {}
 	ns.charKey = ns.Me()
 	db.mine[ns.charKey] = db.mine[ns.charKey] or {}
 	ns.ApplyLanguage(s.lang)
@@ -105,6 +106,10 @@ end
 
 -- The short name a whisper or a line wants ("Ana" for Ana-Forever on your own realm).
 function ns.Short(fullName)
+	-- my own key is "Name-Second" in Forever; the game writes "Name Second" (learned from my own echo)
+	if fullName == ns.charKey and ns.db and ns.db.names and ns.db.names[fullName] then
+		return ns.db.names[fullName]
+	end
 	if Ambiguate then
 		return Ambiguate(fullName, "none")
 	end

@@ -731,3 +731,41 @@ def test_a_chat_link_is_the_games_own_link_when_the_client_knows_the_item(me):
     assert me.run(f"return ns.PostLink(ns.Board.Get('{post.id}'), 'chat')") == "|cffffffff|Hitem:2996|h[Bolt of Linen Cloth]|h|r"
     me.run("C_Item.GetItemInfo = function() error('boom') end")
     assert me.run(f"return ns.PostLink(ns.Board.Get('{post.id}'), 'chat')").endswith("[Bolt of Linen Cloth]|h|r")
+
+
+def forever_names(client, first="Rumie", second="Victoria"):
+    """Forever: two-part names. UnitFullName gives (first, second); a sender arrives as "First Second"."""
+    client.m.player.name, client.m.player.realm = first, second
+    client.run("GetNormalizedRealmName = function() return 'CAMWOWUS1Realm5PvE' end")
+    return client
+
+
+def test_my_own_message_coming_back_is_not_kept_as_someone_elses_post():
+    # seen in the client on 16/11: every post showed twice, "by Rumie-Victoria" and "by Rumie Victoria"
+    me = forever_names(Client("Rumie")).login()
+    post = me.publish("want", LINEN, 3, "")
+    assert me.ns.charKey == "Rumie-Victoria"
+    for _prefix, text, _chat in me.take_sent():
+        me.receive(text, sender="Rumie Victoria")  # the guild channel echoes my message back to me
+    assert me.board() == {} and len(me.all()) == 1
+    # and from here on my own line says my name the way the game writes it
+    assert me.ns.Short(post.by) == "Rumie Victoria"
+    # a guildmate's post still arrives, and one that claims an id of mine is ignored
+    other = forever_names(Client("Rombi"), "Rombi").login()
+    theirs = other.publish("have", LINEN, 1, "")
+    for _prefix, text, _chat in other.take_sent():
+        me.receive(text, sender="Rombi Victoria")
+        me.receive(text.replace(theirs.id, "Rumie-Victoria-1-1"), sender="Rombi Victoria")
+    assert list(me.board()) == [theirs.id] and me.board()[theirs.id].by == "Rombi Victoria"
+    assert len(me.all()) == 2
+
+
+def test_the_echoes_an_older_version_kept_are_dropped_at_login():
+    old = forever_names(Client("Rumie")).login()
+    post = old.publish("want", LINEN, 3, "")
+    old.run("local b = ns.Board.Guild(); local p = ns.Board.Mine()[1]; local copy = {}; for k, v in pairs(p) do copy[k] = v end; copy.by = 'Rumie Victoria'; b[p.id] = copy")
+    old.run("ns.Board.Guild()['Rombi-Victoria-5-1'] = { id = 'Rombi-Victoria-5-1', by = 'Rombi Victoria', kind = 'have', name = 'Malachite', qty = 1, at = ns.Now(), exp = ns.Now() + 86400 }")
+    assert len(old.all()) == 3  # the bug: mine twice, plus the guildmate's
+    again = forever_names(Client("Rumie", saved=old.saved())).login()
+    assert list(again.board()) == ["Rombi-Victoria-5-1"]
+    assert sorted(p.id for p in again.all()) == sorted([post.id, "Rombi-Victoria-5-1"])

@@ -3,6 +3,7 @@
 ## 0.3.0 (sin publicar)
 
 - **El botón ya no queda afuera del botón único de la familia** (Pergamino 8). Con "un solo botón para la familia" elegido en otro addon, uno que mostraba su botón después quedaba afuera (pasó con Taller). La elección ahora se guarda en todos los addons de la familia, así se mantiene con cualquiera que tengas activado (`/trueque minimapa juntar on|off` desde cualquiera), y el botón único recuerda adónde lo arrastraste.
+- **Cada aviso tuyo salía dos veces.** En Forever el remitente de un mensaje llega como "Nombre Segundo" y tu clave es "Nombre-Segundo": el eco de tus propios mensajes se guardaba como el aviso de otro jugador ("by Rumie-Victoria" y "by Rumie Victoria"). Ya no (Pergamino 9, `IsMe`), las copias guardadas se limpian al entrar y tu nombre sale como lo escribe el juego.
 - **Links al chat con el link del juego.** Al mandar un aviso al chat (shift-clic), el ítem va con el link que arma el propio juego cuando lo conoce (Forever escribe los links con un color con nombre, `|cnIQ2:`); antes iba uno armado a mano con color hexadecimal. Si el juego todavía no vio el ítem, sigue saliendo el armado a mano.
 
 ## 0.2.0 (2026-11-07)

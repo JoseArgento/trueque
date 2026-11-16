@@ -143,7 +143,11 @@ function S.OnMessage(prefix, text, channel, sender)
 	if prefix ~= S.PREFIX or channel ~= "GUILD" then
 		return
 	end
-	if sender == ns.charKey or sender == ns.Short(ns.charKey) then
+	-- my own message coming back. Forever names have two parts and the sender arrives as "Rumie Victoria",
+	-- which is neither my key ("Rumie-Victoria") nor its short form: the echo was kept as someone else's post
+	-- and every post of mine showed twice. Pergamino.IsMe knows every spelling.
+	if Pergamino.IsMe(sender) then
+		ns.db.names[ns.charKey] = sender -- how the game writes my name, for the lines that say "by ..."
 		return
 	end
 	if text:match("^Q|") then
@@ -167,6 +171,10 @@ function S.OnMessage(prefix, text, channel, sender)
 		return
 	end
 	post.by = sender
+	-- an id that starts with my own key is mine: nobody else can fill it
+	if post.id:sub(1, #ns.charKey + 1) == ns.charKey .. "-" then
+		return
+	end
 	-- a sender can only fill their own posts: an id already on the board under another name is ignored
 	local old = board[post.id]
 	if old and old.by ~= sender then

@@ -19,6 +19,7 @@ frame:SetScript("OnEvent", function(_, event, ...)
 		end
 	elseif event == "PLAYER_LOGIN" then
 		S.Register()
+		B.DropEchoes()
 		B.Expire()
 		ns.UI.Minimap()
 		S.TrialNotice()
